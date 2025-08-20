@@ -1,13 +1,13 @@
 const mysql = require("mysql2/promise");
 const { config } = require("dotenv");
-const Logger = require("../middleware/Logger");
+const logger = require("./Logger");
 config();
 
 const dbConfig = {
-  host: process.env.HOST,
-  user: process.env.USER,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: Number(process.env.CONNECTIONLIMIT) || 10, // Default if not set
   queueLimit: 0,
@@ -23,9 +23,9 @@ async function connect() {
     try {
       pool = mysql.createPool(dbConfig);
       console.log("Database pool created.");
-      Logger.info("Database pool created.");
+      logger.info("Database pool created.");
     } catch (error) {
-      Logger.error("Error creating pool: "+ error);
+      logger.error("Error creating pool: "+ error);
       console.error("Error creating pool:"+ error);
       throw error;
     }
@@ -42,10 +42,10 @@ async function getConnection() {
     const connection = await pool.getConnection();
     connection.config.namedPlaceholders = true;
     console.log("Connection obtained from pool.");
-    Logger.info("Connection obtained from pool.");
+    logger.info("Connection obtained from pool.");
     return connection;
   } catch (error) {
-    Logger.error("Error obtaining connection: "+ error);
+    logger.error("Error obtaining connection: "+ error);
     console.error("Error obtaining connection:"+ error);
     throw error;
   }
@@ -69,11 +69,11 @@ async function mainConnection(retries = 5, delay = 3000) {
       connection.release();
       break; // Exit loop if successful
     } catch (error) {
-      Logger.error(`Connection error. Retries left: ${retries - 1}`+error);
+      logger.error(`Connection error. Retries left: ${retries - 1}`+error);
       console.error(`Connection error. Retries left: ${retries - 1}`+error);
       retries -= 1;
       if (retries === 0) {
-        Logger.error("All retries failed. Could not connect to the database.");
+        logger.error("All retries failed. Could not connect to the database.");
         console.error("All retries failed. Could not connect to the database.");
         break;
       }
@@ -84,7 +84,7 @@ async function mainConnection(retries = 5, delay = 3000) {
         try {
           connection.release();
         } catch (releaseError) {
-          Logger.error("Error releasing connection: ", releaseError);
+          logger.error("Error releasing connection: ", releaseError);
         }
       }
     }
