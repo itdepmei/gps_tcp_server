@@ -1,0 +1,51 @@
+
+services:
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: gps-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - gps-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # GPS Listener Service
+  gps-listener:
+    image: bassm1234/gps-listener:latest  # Use Docker Hub image instead of build
+    container_name: gps-listener
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - gps-network
+    volumes:
+      # تغيير مسار logs لتجنب مشاكل الصلاحيات
+      - ./logs:/app/logs:rw
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').createConnection(8080, 'localhost').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  gps-network:
+    driver: bridge

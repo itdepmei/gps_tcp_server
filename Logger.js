@@ -1,47 +1,51 @@
 const { createLogger, format, transports } = require('winston');
 const path = require('path');
-const DailyRotateFile = require('winston-daily-rotate-file');
-// Define log file naming format with monthly rotation
-const logFileFormat = 'YYYY-MM'; // Rotate logs based on the year and month
-// Create logger instance
 
+// Create logger instance with console only for Docker
 const logger = createLogger({
-  level: 'info', // Set default log level for the root logger
+  level: 'info',
   format: format.combine(
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     format.printf(({ timestamp, level, message }) => {
-      return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+      return `${timestamp} ${level}: ${message}`;
     })
   ),
   transports: [
-    // Console transport to show logs in the console
+    // Console transport only - Docker will handle log collection
     new transports.Console({
       format: format.combine(
-        format.colorize(), // Add colors for console output
+        format.colorize(),
         format.simple()
       ),
-      level: 'info', // Only handle logs at info level or higher for console
-    }),
-    // Info level logs with monthly rotation
-    new DailyRotateFile({
-      filename: path.join(__dirname, `../logs/info-%DATE%.log`),
-      datePattern: logFileFormat, // Rotate every month
-      level: 'info', // Only log 'info' level messages here
-      zippedArchive: true, // Compress old log files
-      maxSize: '20m', // Limit file size to 20 MB
-      maxFiles: '12', // Keep logs for 12 months (one log file per month)
-    }),
-    // Error level logs with monthly rotation
-    new DailyRotateFile({
-      filename: path.join(__dirname, `../logs/error-%DATE%.log`),
-      datePattern: logFileFormat, // Rotate every month
-      level: 'error', // Only log 'error' level messages here
-      zippedArchive: true, // Compress old log files
-      maxSize: '20m', // Limit file size to 20 MB
-      maxFiles: '12', // Keep logs for 12 months (one log file per month)
+      level: 'info'
     })
   ],
-  exitOnError: false, // Prevent exit on handled exceptions
+  exitOnError: false
 });
+
+// إضافة file transport فقط إذا كان مجلد logs موجود
+try {
+  const fs = require('fs');
+  const logsDir = path.join(__dirname, 'logs');
+  
+  if (fs.existsSync(logsDir) || process.env.NODE_ENV !== 'production') {
+    const DailyRotateFile = require('winston-daily-rotate-file');
+    
+    // إنشاء المجلد إذا لم يكن موجود
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    
+    logger.add(new DailyRotateFile({
+      filename: path.join(logsDir, 'app-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      maxSize: '20m',
+      maxFiles: '14d',
+      zippedArchive: true
+    }));
+  }
+} catch (err) {
+  console.warn('File logging disabled:', err.message);
+}
 
 module.exports = logger;
