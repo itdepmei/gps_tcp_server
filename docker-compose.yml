@@ -17,6 +17,27 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+      
+  mysql:
+    image: mysql:8.0
+    container_name: fuel-management-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=fauil
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=StrongP@ssw0rd!
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - gps-network  # Changed from fuel-network to gps-network
+    restart: unless-stopped
 
   # GPS Listener Service
   gps-listener:
@@ -24,17 +45,22 @@ services:
     container_name: gps-listener
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8082:8080"
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
+      - DB_HOST=mysql
+      - DB_USER=admin
+      - DB_PASSWORD=StrongP@ssw0rd!
+      - DB_NAME=fauil
     depends_on:
       redis:
+        condition: service_healthy
+      mysql:
         condition: service_healthy
     networks:
       - gps-network
     volumes:
-      # تغيير مسار logs لتجنب مشاكل الصلاحيات
       - ./logs:/app/logs:rw
     healthcheck:
       test: ["CMD", "node", "-e", "require('net').createConnection(8080, 'localhost').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]
@@ -44,6 +70,8 @@ services:
 
 volumes:
   redis_data:
+    driver: local
+  mysql_data:
     driver: local
 
 networks:

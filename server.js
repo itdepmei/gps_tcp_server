@@ -1,12 +1,13 @@
 const net = require("net");
 const { ProtocolParser, parseIMEI } = require("complete-teltonika-parser");
 const { mainConnection } = require("./db");
-const { updateLocationGps } = require("./updateLocationGps");
+const { updateLocationGps } = require("./controller/updateLocationGps");
+const { clearTrucksListCache } = require("./controller/vehicleCache");
 
 // Redis publisher مع error handling
 let publishGPSUpdate;
 try {
-  const redisPublisher = require("./redisPublisher");
+  const redisPublisher = require("./controller/redisPublisher");
   publishGPSUpdate = redisPublisher.publishGPSUpdate;
   console.log('✅ Redis publisher loaded successfully');
 } catch (err) {
@@ -250,7 +251,11 @@ const server = net.createServer((socket) => {
     socketIMEIMap.delete(socketId);
   });
 });
-
+// start test 
+setInterval(async () => {
+ publishGPSUpdate();
+}, 5000);
+// await clearTrucksListCache()
 // Helper functions
 function getAllGPSData() {
   return gpsDataStore;
