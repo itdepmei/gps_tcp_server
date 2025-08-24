@@ -3,17 +3,17 @@ const { ProtocolParser, parseIMEI } = require("complete-teltonika-parser");
 const { mainConnection } = require("./db");
 const { updateLocationGps } = require("./controller/updateLocationGps");
 const { clearTrucksListCache } = require("./controller/vehicleCache");
+const redisPublisher = require("./controller/redisPublisher");
 
 // Redis publisher مع error handling
 let publishGPSUpdate;
 try {
-  const redisPublisher = require("./controller/redisPublisher");
   publishGPSUpdate = redisPublisher.publishGPSUpdate;
-  console.log('✅ Redis publisher loaded successfully');
+  console.log("✅ Redis publisher loaded successfully");
 } catch (err) {
-  console.warn('⚠️ Redis publisher not available:', err.message);
+  console.warn("⚠️ Redis publisher not available:", err.message);
   publishGPSUpdate = (data) => {
-    console.log('📍 GPS data received (Redis disabled):', data.imei);
+    console.log("📍 GPS data received (Redis disabled):", data.imei);
   };
 }
 
@@ -27,6 +27,7 @@ initializeServer();
 
 // Organize and save GPS data
 function organizeGPSData(records, deviceIMEI) {
+  console.log("=== start organize GPS data...");
   const organizedData = records.map((record) => ({
     imei: deviceIMEI,
     timestamp: record.Timestamp,
@@ -48,16 +49,17 @@ function organizeGPSData(records, deviceIMEI) {
 
   console.log("=== start update Location GPS data to database...");
   updateLocationGps(organizedData).catch((err) =>
-    console.error("Failed to update GPS data:", err)
+    logger.error("Failed to update GPS data:", err)
   );
   console.log("=== end update Location GPS data to database...");
 
   // ✅ انشر آخر تحديث لـ Redis (مع error handling)
   organizedData.forEach((record) => {
     try {
+      
       publishGPSUpdate(record);
     } catch (err) {
-      console.error('Error publishing to Redis:', err.message);
+      console.error("Error publishing to Redis:", err.message);
     }
   });
 
@@ -251,11 +253,11 @@ const server = net.createServer((socket) => {
     socketIMEIMap.delete(socketId);
   });
 });
-// start test 
+// start test
 setInterval(async () => {
- publishGPSUpdate();
-//  await clearTrucksListCache()
-}, 5000);
+  publishGPSUpdate();
+  //  await clearTrucksListCache()
+}, 10000);
 // Helper functions
 function getAllGPSData() {
   return gpsDataStore;
