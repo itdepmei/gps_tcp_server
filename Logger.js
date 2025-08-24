@@ -27,23 +27,33 @@ const logger = createLogger({
 try {
   const fs = require('fs');
   const logsDir = path.join(__dirname, 'logs');
-  
-  if (fs.existsSync(logsDir) || process.env.NODE_ENV !== 'production') {
-    const DailyRotateFile = require('winston-daily-rotate-file');
-    
-    // إنشاء المجلد إذا لم يكن موجود
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-    
-    logger.add(new DailyRotateFile({
-      filename: path.join(logsDir, 'app-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
-      zippedArchive: true
-    }));
+  const DailyRotateFile = require('winston-daily-rotate-file');
+
+  // إنشاء المجلد إذا لم يكن موجود
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
   }
+
+  // ✅ Logs عامة (info وما فوق)
+  logger.add(new DailyRotateFile({
+    filename: path.join(logsDir, 'app-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '14d',
+    zippedArchive: true,
+    level: 'info'
+  }));
+
+  // ✅ Logs خاصة بالأخطاء فقط
+  logger.add(new DailyRotateFile({
+    filename: path.join(logsDir, 'error-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '30d',
+    zippedArchive: true,
+    level: 'error'
+  }));
+
 } catch (err) {
   console.warn('File logging disabled:', err.message);
 }

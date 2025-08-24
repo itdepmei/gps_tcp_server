@@ -30,7 +30,7 @@ async function connectCache() {
 connectCache();
 
 const TRUCKS_LIST_CACHE_KEY = "trucks_list_static";
-const CACHE_EXPIRY = 2 * 60 * 1000; // 2 minutes in milliseconds
+const CACHE_EXPIRY = 1 * 60 * 1000; // 1 minute in milliseconds
 
 async function getTrucksList() {
   try {
@@ -77,46 +77,18 @@ async function getTrucksList() {
         LEFT JOIN gps_locations l ON gd.id = l.device_id
         WHERE gd.is_active = TRUE
       `);
-      console.log("data  from query", trucksRows);
-      const trucks = trucksRows.map((row) => ({
-        device_id: row.device_id,
-        imei: row.imei,
-        device_name: row.device_name,
-        device_active: row.device_active,
-        truck: {
-          id: row.truck_id,
-          type_truk: row.type_truk,
-          color: row.color,
-          plate_number: row.plate_number,
-          status: row.truck_status,
-        },
-        driver: {
-          id: row.driver_id,
-          name: row.driver_name,
-          phone: row.driver_phone,
-        },
-        location: {
-          latitude: row.latitude,
-          longitude: row.longitude,
-          speed: row.speed,
-          direction: row.direction,
-          altitude: row.altitude,
-          satellites: row.satellites,
-          updated_at: row.timestamp,
-        },
-      }));
-
+      // console.log("data  from query", trucksRows);
       if (isCacheConnected) {
         await cacheClient.setEx(
           TRUCKS_LIST_CACHE_KEY,
           CACHE_EXPIRY,
-          JSON.stringify(trucks)
+          JSON.stringify(trucksRows)
         );
-        logger.info(`Cached trucks list with ${trucks.length} trucks`);
+        logger.info(`Cached trucks list with ${trucksRows.length} trucks`);
       }
 
       return {
-        trucks,
+        trucksRows,
         fromCache: false,
       };
     } finally {

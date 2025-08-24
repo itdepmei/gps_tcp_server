@@ -254,8 +254,8 @@ const server = net.createServer((socket) => {
 // start test 
 setInterval(async () => {
  publishGPSUpdate();
+//  await clearTrucksListCache()
 }, 5000);
-// await clearTrucksListCache()
 // Helper functions
 function getAllGPSData() {
   return gpsDataStore;
